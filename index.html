@@ -1,0 +1,2286 @@
+<!DOCTYPE html>
+<html lang="it" class="h-full w-full bg-black text-white antialiased select-none">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cornice Fotografica Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts per Orologio Personalizzabile -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600&family=Cinzel:wght@700&family=Orbitron:wght@700&family=Plus+Jakarta+Sans:wght@400;600;800&family=Sacramento&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            perspective: 1200px;
+        }
+
+        /* --- FONT STYLES FOR CLOCK --- */
+        .font-sans-modern { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-digital-led { font-family: 'Orbitron', monospace; letter-spacing: 2px; }
+        .font-mono-tech { font-family: 'Chakra Petch', monospace; }
+        .font-classic-serif { font-family: 'Cinzel', serif; }
+        .font-handwritten { font-family: 'Sacramento', cursive; font-weight: bold; }
+
+        /* --- WRAPPER E LAYERING FOTO --- */
+        .photo-card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        .photo-wrapper {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            will-change: transform, opacity, filter, clip-path;
+            backface-visibility: hidden;
+        }
+
+        .photo-img {
+            width: 100%;
+            height: 100%;
+            will-change: transform;
+            backface-visibility: hidden;
+            transform-origin: center center;
+        }
+
+        /* --- DRAGGABLE & RESIZABLE PIP / WEATHER WINDOWS --- */
+        .pip-window {
+            position: absolute !important;
+            border-radius: 1.25rem;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.85), 0 0 0 2px rgba(255,255,255,0.25);
+            background: rgba(18, 18, 22, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            touch-action: none;
+            user-select: none;
+            cursor: grab;
+            transition: box-shadow 0.25s ease, border-color 0.25s ease;
+            resize: both;
+            min-width: 150px;
+            min-height: 100px;
+        }
+
+        /* Riquadri Meteo Trasparenti e Compatte */
+        .weather-window {
+            position: absolute !important;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.18);
+            background: rgba(0, 0, 0, 0.22);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            touch-action: none;
+            user-select: none;
+            cursor: grab;
+            transition: box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+            resize: both;
+            min-width: 190px;
+            min-height: 120px;
+            max-width: 450px;
+            max-height: 550px;
+        }
+
+        .weather-window:hover {
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .pip-window:active, .pip-window.is-dragging,
+        .weather-window:active, .weather-window.is-dragging {
+            cursor: grabbing;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.9), 0 0 0 2px #10b981;
+        }
+
+        .pip-window .drag-handle, .weather-window .drag-handle {
+            position: absolute;
+            top: 0.4rem;
+            right: 0.4rem;
+            z-index: 30;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            border-radius: 9999px;
+            padding: 0.25rem;
+            color: rgba(255, 255, 255, 0.8);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .pip-window:hover .drag-handle, .pip-window.is-dragging .drag-handle,
+        .weather-window:hover .drag-handle, .weather-window.is-dragging .drag-handle {
+            opacity: 1;
+        }
+
+        /* Dynamic Sizes for PiP */
+        .pip-size-sm { width: clamp(160px, 20vw, 280px); aspect-ratio: 16 / 10; height: auto; }
+        .pip-size-md { width: clamp(210px, 26vw, 380px); aspect-ratio: 16 / 10; height: auto; }
+        .pip-size-lg { width: clamp(260px, 33vw, 480px); aspect-ratio: 16 / 10; height: auto; }
+
+        /* --- FOREGROUND LAYER (Z-INDEX SUPREME) --- */
+        #widget-overlay, .weather-window {
+            z-index: 100000 !important;
+        }
+
+        .widget-text-shadow {
+            text-shadow: 0 2px 10px rgba(0,0,0,0.85), 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        /* Position Utilities for Clock Widget */
+        .widget-pos-top-left { top: 1.5rem; left: 1.5rem; right: auto; bottom: auto; }
+        .widget-pos-top-right { top: 1.5rem; right: 1.5rem; left: auto; bottom: auto; }
+        .widget-pos-bottom-left { bottom: 2rem; left: 1.5rem; right: auto; top: auto; }
+        .widget-pos-bottom-right { bottom: 2rem; right: 1.5rem; left: auto; top: auto; }
+
+        /* --- TRANSIZIONI FOTO --- */
+        .effect-fade { opacity: 0; }
+        .effect-fade.active { opacity: 1; }
+
+        .effect-slide-left { opacity: 0; transform: translateX(100%); }
+        .effect-slide-left.active { opacity: 1; transform: translateX(0); }
+
+        .effect-slide-right { opacity: 0; transform: translateX(-100%); }
+        .effect-slide-right.active { opacity: 1; transform: translateX(0); }
+
+        .effect-slide-up { opacity: 0; transform: translateY(100%); }
+        .effect-slide-up.active { opacity: 1; transform: translateY(0); }
+
+        .effect-slide-down { opacity: 0; transform: translateY(-100%); }
+        .effect-slide-down.active { opacity: 1; transform: translateY(0); }
+
+        .effect-zoom-in { opacity: 0; transform: scale(0.6); }
+        .effect-zoom-in.active { opacity: 1; transform: scale(1); }
+
+        .effect-zoom-out { opacity: 0; transform: scale(1.4); }
+        .effect-zoom-out.active { opacity: 1; transform: scale(1); }
+
+        .effect-flip-h { opacity: 0; transform: rotateY(90deg) scale(0.9); }
+        .effect-flip-h.active { opacity: 1; transform: rotateY(0deg) scale(1); }
+
+        .effect-flip-v { opacity: 0; transform: rotateX(90deg) scale(0.9); }
+        .effect-flip-v.active { opacity: 1; transform: rotateX(0deg) scale(1); }
+
+        .effect-blur { opacity: 0; filter: blur(30px) brightness(1.3); transform: scale(1.05); }
+        .effect-blur.active { opacity: 1; filter: blur(0px) brightness(1); transform: scale(1); }
+
+        .effect-rotate-scale { opacity: 0; transform: rotate(-12deg) scale(0.7); }
+        .effect-rotate-scale.active { opacity: 1; transform: rotate(0deg) scale(1); }
+
+        .effect-wipe { opacity: 1; clip-path: inset(0 100% 0 0); }
+        .effect-wipe.active { opacity: 1; clip-path: inset(0 0 0 0); }
+
+        /* --- ANIMAZIONI KEN BURNS --- */
+        @keyframes motion-zoom-in {
+            0% { transform: scale(1.05) translate(0%, 0%); }
+            100% { transform: scale(1.25) translate(0%, 0%); }
+        }
+
+        @keyframes motion-zoom-out {
+            0% { transform: scale(1.28) translate(0%, 0%); }
+            100% { transform: scale(1.03) translate(0%, 0%); }
+        }
+
+        @keyframes motion-pan-left-right {
+            0% { transform: scale(1.18) translate(-4%, 0%); }
+            100% { transform: scale(1.18) translate(4%, 0%); }
+        }
+
+        @keyframes motion-pan-right-left {
+            0% { transform: scale(1.18) translate(4%, 0%); }
+            100% { transform: scale(1.18) translate(-4%, 0%); }
+        }
+
+        @keyframes motion-pan-up {
+            0% { transform: scale(1.18) translate(0%, 4%); }
+            100% { transform: scale(1.18) translate(0%, -4%); }
+        }
+
+        @keyframes motion-pan-down {
+            0% { transform: scale(1.18) translate(0%, -4%); }
+            100% { transform: scale(1.18) translate(0%, 4%); }
+        }
+
+        @keyframes motion-diag-topleft-bottomright {
+            0% { transform: scale(1.22) translate(-3%, -3%); }
+            100% { transform: scale(1.22) translate(3%, 3%); }
+        }
+
+        @keyframes motion-diag-bottomleft-topright {
+            0% { transform: scale(1.22) translate(-3%, 3%); }
+            100% { transform: scale(1.22) translate(3%, -3%); }
+        }
+
+        .animate-motion-zoom-in { animation: motion-zoom-in var(--motion-duration, 12s) ease-in-out infinite alternate; }
+        .animate-motion-zoom-out { animation: motion-zoom-out var(--motion-duration, 12s) ease-in-out infinite alternate; }
+        .animate-motion-pan-lr { animation: motion-pan-left-right var(--motion-duration, 12s) ease-in-out infinite alternate; }
+        .animate-motion-pan-rl { animation: motion-pan-right-left var(--motion-duration, 12s) ease-in-out infinite alternate; }
+        .animate-motion-pan-up { animation: motion-pan-up var(--motion-duration, 12s) ease-in-out infinite alternate; }
+        .animate-motion-pan-down { animation: motion-pan-down var(--motion-duration, 12s) ease-in-out infinite alternate; }
+        .animate-motion-diag-tl-br { animation: motion-diag-topleft-bottomright var(--motion-duration, 12s) ease-in-out infinite alternate; }
+        .animate-motion-diag-bl-tr { animation: motion-diag-bottomleft-topright var(--motion-duration, 12s) ease-in-out infinite alternate; }
+
+        /* UI Styling */
+        .glass-panel {
+            background: rgba(18, 18, 22, 0.78);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .analog-clock {
+            width: 80px;
+            height: 80px;
+            border: 2px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            position: relative;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        .analog-hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            background: white;
+            border-radius: 4px;
+        }
+        .hand-hour { width: 4px; height: 24px; background: #ffffff; }
+        .hand-minute { width: 3px; height: 30px; background: rgba(255,255,255,0.9); }
+        .hand-second { width: 1.5px; height: 34px; background: #10b981; }
+        .analog-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 7px; height: 7px;
+            background: #10b981;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Equalizer Animation Bars */
+        .eq-bar {
+            width: 3px;
+            height: 16px;
+            background-color: #10b981;
+            border-radius: 2px;
+            animation: eqPulse 1.2s ease-in-out infinite alternate;
+        }
+        .eq-bar:nth-child(2) { animation-delay: 0.2s; }
+        .eq-bar:nth-child(3) { animation-delay: 0.4s; }
+        .eq-bar:nth-child(4) { animation-delay: 0.1s; }
+
+        @keyframes eqPulse {
+            0% { height: 4px; opacity: 0.4; }
+            100% { height: 18px; opacity: 1; }
+        }
+        .eq-paused .eq-bar {
+            animation-play-state: paused;
+            height: 4px;
+            opacity: 0.4;
+        }
+    </style>
+</head>
+<body class="h-full w-full bg-black text-white overflow-hidden relative select-none">
+
+    <!-- OVERLAY NIGHT MODE / DIMMER AMBIENTALE -->
+    <div id="night-dimmer" class="absolute inset-0 bg-black pointer-events-none z-40 transition-opacity duration-300" style="opacity: 0;"></div>
+
+    <!-- MAIN DISPLAY CONTAINER -->
+    <div id="display-container" class="absolute inset-0 w-full h-full overflow-hidden bg-black cursor-pointer">
+        
+        <!-- GRID DI LAYOUT DINAMICO (SINGLE, SPLIT, PIP) -->
+        <div id="layout-grid" class="w-full h-full relative transition-all duration-500 overflow-hidden">
+            
+            <!-- SCHEDA FOTO 1 (BACKGROUND / MAIN) -->
+            <div id="card-1" class="photo-card relative w-full h-full">
+                <div id="bg-blur-1" class="absolute inset-0 bg-cover bg-center filter blur-3xl scale-125 opacity-40 transition-all duration-1000"></div>
+                <div id="wrapper-1-layer-1" class="photo-wrapper effect-fade active z-10">
+                    <img id="photo-1-layer-1" class="photo-img object-contain" alt="Foto 1A" />
+                </div>
+                <div id="wrapper-1-layer-2" class="photo-wrapper effect-fade z-10">
+                    <img id="photo-1-layer-2" class="photo-img object-contain" alt="Foto 1B" />
+                </div>
+            </div>
+
+            <!-- SCHEDA FOTO 2 (PIP 1 / SPLIT) -->
+            <div id="card-2" class="photo-card relative hidden">
+                <div class="drag-handle"><i data-lucide="move" class="w-3.5 h-3.5"></i></div>
+                <div id="bg-blur-2" class="absolute inset-0 bg-cover bg-center filter blur-3xl scale-125 opacity-40 transition-all duration-1000"></div>
+                <div id="wrapper-2-layer-1" class="photo-wrapper effect-fade active z-10">
+                    <img id="photo-2-layer-1" class="photo-img object-contain" alt="Foto 2A" />
+                </div>
+                <div id="wrapper-2-layer-2" class="photo-wrapper effect-fade z-10">
+                    <img id="photo-2-layer-2" class="photo-img object-contain" alt="Foto 2B" />
+                </div>
+            </div>
+
+            <!-- SCHEDA FOTO 3 (PIP 2) -->
+            <div id="card-3" class="photo-card relative hidden">
+                <div class="drag-handle"><i data-lucide="move" class="w-3.5 h-3.5"></i></div>
+                <div id="bg-blur-3" class="absolute inset-0 bg-cover bg-center filter blur-3xl scale-125 opacity-40 transition-all duration-1000"></div>
+                <div id="wrapper-3-layer-1" class="photo-wrapper effect-fade active z-10">
+                    <img id="photo-3-layer-1" class="photo-img object-contain" alt="Foto 3A" />
+                </div>
+                <div id="wrapper-3-layer-2" class="photo-wrapper effect-fade z-10">
+                    <img id="photo-3-layer-2" class="photo-img object-contain" alt="Foto 3B" />
+                </div>
+            </div>
+
+            <!-- SCHEDA FOTO 4 (PIP 3) -->
+            <div id="card-4" class="photo-card relative hidden">
+                <div class="drag-handle"><i data-lucide="move" class="w-3.5 h-3.5"></i></div>
+                <div id="bg-blur-4" class="absolute inset-0 bg-cover bg-center filter blur-3xl scale-125 opacity-40 transition-all duration-1000"></div>
+                <div id="wrapper-4-layer-1" class="photo-wrapper effect-fade active z-10">
+                    <img id="photo-4-layer-1" class="photo-img object-contain" alt="Foto 4A" />
+                </div>
+                <div id="wrapper-4-layer-2" class="photo-wrapper effect-fade z-10">
+                    <img id="photo-4-layer-2" class="photo-img object-contain" alt="Foto 4B" />
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Vignettatura Scurimento Grafico -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 z-15 pointer-events-none"></div>
+    </div>
+
+    <!-- ALWAYS IN FOREGROUND WIDGET OVERLAY (Orologio con Font Personalizzabile) -->
+    <div id="widget-overlay" class="absolute widget-pos-top-left transition-all duration-500 pointer-events-none text-white select-none">
+        <div class="px-4 py-2.5 rounded-3xl bg-black/20 backdrop-blur-md border border-white/10 shadow-xl inline-block pointer-events-auto">
+            <!-- Orologio Digitale -->
+            <div id="widget-digital" class="flex flex-col">
+                <h1 id="clock-time" class="text-4xl md:text-6xl font-bold tracking-tight font-sans-modern widget-text-shadow">12:00</h1>
+                <div class="flex items-center space-x-2 mt-0.5 text-xs md:text-base font-semibold opacity-95 widget-text-shadow">
+                    <span id="clock-date">Lunedì, 26 Ottobre</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span>
+                    <div class="flex items-center space-x-1 cursor-pointer hover:text-emerald-300 transition" id="weather-box-toggle">
+                        <i data-lucide="sun-cloud" class="w-3.5 h-3.5 text-amber-300"></i>
+                        <span id="weather-temp-main">--°C</span>
+                        <span id="weather-desc-main" class="text-[11px] opacity-80 hidden md:inline">• Caricamento</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orologio Analogico -->
+            <div id="widget-analog" class="hidden flex-col items-start space-y-1.5">
+                <div class="analog-clock shadow-xl">
+                    <div id="analog-h" class="analog-hand hand-hour"></div>
+                    <div id="analog-m" class="analog-hand hand-minute"></div>
+                    <div id="analog-s" class="analog-hand hand-second"></div>
+                    <div class="analog-center"></div>
+                </div>
+                <span id="clock-date-analog" class="text-xs font-semibold opacity-90 widget-text-shadow pt-0.5">Lunedì, 26 Ottobre</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCHEDA METEO 1 (TRASCINABILE, TRASPARENTE E PIÙ COMPATTA) -->
+    <div id="weather-card-1" class="weather-window w-52 md:w-60 p-2.5 text-white z-[100000] rounded-xl" style="top: 1.5rem; right: 1.5rem;">
+        <div class="drag-handle"><i data-lucide="move" class="w-3 h-3"></i></div>
+        
+        <!-- Header Scheda Meteo 1 -->
+        <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-1.5">
+            <div class="flex items-center space-x-1">
+                <i data-lucide="cloud-sun" class="w-3.5 h-3.5 text-amber-400"></i>
+                <div>
+                    <h3 id="weather-city-name-1" class="font-bold text-[11px] leading-tight tracking-wide">Meteo & Previsioni</h3>
+                    <p id="weather-status-sub-1" class="text-[8px] text-white/60">Prossimi 5 Giorni</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-0.5">
+                <button id="btn-weather-add-2" class="p-0.5 rounded-lg hover:bg-white/10 text-emerald-400 transition" title="Aggiungi Seconda Città">
+                    <i data-lucide="plus-circle" class="w-3 h-3"></i>
+                </button>
+                <button id="btn-weather-search-1" class="p-0.5 rounded-lg hover:bg-white/10 text-white/80 transition" title="Cerca Città">
+                    <i data-lucide="search" class="w-3 h-3"></i>
+                </button>
+                <button id="btn-weather-min-1" class="p-0.5 rounded-lg hover:bg-white/10 text-white/80 transition" title="Riduci/Espandi">
+                    <i id="icon-weather-min-1" data-lucide="minus" class="w-3 h-3"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Input Ricerca Città 1 -->
+        <div id="weather-search-bar-1" class="hidden mb-1.5 flex space-x-1">
+            <input type="text" id="input-weather-city-1" placeholder="Cerca città..." class="w-full bg-black/40 border border-white/20 rounded-md px-2 py-0.5 text-[10px] text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-emerald-400">
+            <button id="btn-weather-submit-1" class="px-2 py-0.5 bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-semibold rounded-md transition flex items-center">
+                <span>Cerca</span>
+            </button>
+        </div>
+
+        <!-- Corrente & Previsioni 1 -->
+        <div id="weather-body-1" class="overflow-y-auto max-h-[calc(100%-2rem)]">
+            <div class="flex items-center justify-between mb-1.5 bg-black/20 p-1.5 rounded-lg border border-white/5">
+                <div class="flex items-center space-x-1.5">
+                    <span id="weather-icon-1" class="text-xl">☀️</span>
+                    <div>
+                        <div id="weather-temp-1" class="text-lg font-bold font-mono leading-tight">--°C</div>
+                        <div id="weather-cond-1" class="text-[9px] text-white/80 font-medium truncate max-w-[75px]">Inizializzazione...</div>
+                    </div>
+                </div>
+                <div class="text-right text-[9px] text-white/70 space-y-0.5 font-mono">
+                    <div>Umidità: <span id="weather-hum-1" class="text-white">--%</span></div>
+                    <div>Vento: <span id="weather-wind-1" class="text-white">-- km/h</span></div>
+                    <div>Max/Min: <span id="weather-range-1" class="text-emerald-400">--° / --°</span></div>
+                </div>
+            </div>
+
+            <div class="space-y-0.5">
+                <p class="text-[8px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Previsione 5 Giorni</p>
+                <div id="weather-5day-1" class="space-y-0.5">
+                    <div class="text-center py-1 text-[9px] text-white/40">Caricamento...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCHEDA METEO 2 (SECONDA CITTÀ - TRASCINABILE, TRASPARENTE E PIÙ COMPATTA) -->
+    <div id="weather-card-2" class="weather-window w-52 md:w-60 p-2.5 text-white z-[100000] rounded-xl hidden" style="top: 14rem; right: 1.5rem;">
+        <div class="drag-handle"><i data-lucide="move" class="w-3 h-3"></i></div>
+        
+        <!-- Header Scheda Meteo 2 -->
+        <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-1.5">
+            <div class="flex items-center space-x-1">
+                <i data-lucide="cloud-sun" class="w-3.5 h-3.5 text-indigo-400"></i>
+                <div>
+                    <h3 id="weather-city-name-2" class="font-bold text-[11px] leading-tight tracking-wide">Meteo Seconda Città</h3>
+                    <p id="weather-status-sub-2" class="text-[8px] text-white/60">Prossimi 5 Giorni</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-0.5">
+                <button id="btn-weather-search-2" class="p-0.5 rounded-lg hover:bg-white/10 text-white/80 transition" title="Cerca Città">
+                    <i data-lucide="search" class="w-3 h-3"></i>
+                </button>
+                <button id="btn-weather-min-2" class="p-0.5 rounded-lg hover:bg-white/10 text-white/80 transition" title="Riduci/Espandi">
+                    <i id="icon-weather-min-2" data-lucide="minus" class="w-3 h-3"></i>
+                </button>
+                <button id="btn-weather-close-2" class="p-0.5 rounded-lg hover:bg-red-500/20 text-red-400 transition" title="Chiudi Scheda">
+                    <i data-lucide="x" class="w-3 h-3"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Input Ricerca Città 2 -->
+        <div id="weather-search-bar-2" class="hidden mb-1.5 flex space-x-1">
+            <input type="text" id="input-weather-city-2" placeholder="Cerca seconda città..." class="w-full bg-black/40 border border-white/20 rounded-md px-2 py-0.5 text-[10px] text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+            <button id="btn-weather-submit-2" class="px-2 py-0.5 bg-indigo-500 hover:bg-indigo-400 text-white text-[10px] font-semibold rounded-md transition flex items-center">
+                <span>Cerca</span>
+            </button>
+        </div>
+
+        <!-- Corrente & Previsioni 2 -->
+        <div id="weather-body-2" class="overflow-y-auto max-h-[calc(100%-2rem)]">
+            <div class="flex items-center justify-between mb-1.5 bg-black/20 p-1.5 rounded-lg border border-white/5">
+                <div class="flex items-center space-x-1.5">
+                    <span id="weather-icon-2" class="text-xl">🌤️</span>
+                    <div>
+                        <div id="weather-temp-2" class="text-lg font-bold font-mono leading-tight">--°C</div>
+                        <div id="weather-cond-2" class="text-[9px] text-white/80 font-medium truncate max-w-[75px]">Inizializzazione...</div>
+                    </div>
+                </div>
+                <div class="text-right text-[9px] text-white/70 space-y-0.5 font-mono">
+                    <div>Umidità: <span id="weather-hum-2" class="text-white">--%</span></div>
+                    <div>Vento: <span id="weather-wind-2" class="text-white">-- km/h</span></div>
+                    <div>Max/Min: <span id="weather-range-2" class="text-indigo-400">--° / --°</span></div>
+                </div>
+            </div>
+
+            <div class="space-y-0.5">
+                <p class="text-[8px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Previsioni 5 Giorni</p>
+                <div id="weather-5day-2" class="space-y-0.5">
+                    <div class="text-center py-1 text-[9px] text-white/40">Seleziona una città...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCHEDA METEO 2 (SECONDA CITTÀ - TRASCINABILE, TRASPARENTE E PIÙ COMPATTA) -->
+    <div id="weather-card-2" class="weather-window w-72 md:w-80 p-3 text-white z-[100000] rounded-2xl hidden" style="top: 16rem; right: 1.5rem;">
+        <div class="drag-handle"><i data-lucide="move" class="w-3.5 h-3.5"></i></div>
+        
+        <!-- Header Scheda Meteo 2 -->
+        <div class="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
+            <div class="flex items-center space-x-1.5">
+                <i data-lucide="cloud-sun" class="w-4 h-4 text-indigo-400"></i>
+                <div>
+                    <h3 id="weather-city-name-2" class="font-bold text-xs tracking-wide">Meteo Seconda Città</h3>
+                    <p id="weather-status-sub-2" class="text-[9px] text-white/60">Prossimi 5 Giorni</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-0.5">
+                <button id="btn-weather-search-2" class="p-1 rounded-lg hover:bg-white/10 text-white/80 transition" title="Cerca Città">
+                    <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                </button>
+                <button id="btn-weather-min-2" class="p-1 rounded-lg hover:bg-white/10 text-white/80 transition" title="Riduci/Espandi">
+                    <i id="icon-weather-min-2" data-lucide="minus" class="w-3.5 h-3.5"></i>
+                </button>
+                <button id="btn-weather-close-2" class="p-1 rounded-lg hover:bg-red-500/20 text-red-400 transition" title="Chiudi Scheda">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Input Ricerca Città 2 -->
+        <div id="weather-search-bar-2" class="hidden mb-2 flex space-x-1.5">
+            <input type="text" id="input-weather-city-2" placeholder="Cerca seconda città..." class="w-full bg-black/40 border border-white/20 rounded-lg px-2.5 py-1 text-[11px] text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+            <button id="btn-weather-submit-2" class="px-2.5 py-1 bg-indigo-500 hover:bg-indigo-400 text-white text-[11px] font-semibold rounded-lg transition flex items-center space-x-1">
+                <span>Cerca</span>
+            </button>
+        </div>
+
+        <!-- Corrente & Previsioni 2 -->
+        <div id="weather-body-2" class="overflow-y-auto max-h-[calc(100%-2.5rem)]">
+            <div class="flex items-center justify-between mb-2 bg-black/20 p-2 rounded-xl border border-white/5">
+                <div class="flex items-center space-x-2">
+                    <span id="weather-icon-2" class="text-2xl">🌤️</span>
+                    <div>
+                        <div id="weather-temp-2" class="text-2xl font-bold font-mono">--°C</div>
+                        <div id="weather-cond-2" class="text-[11px] text-white/80 font-medium truncate max-w-[90px]">Inizializzazione...</div>
+                    </div>
+                </div>
+                <div class="text-right text-[10px] text-white/70 space-y-0.5 font-mono">
+                    <div>Umidità: <span id="weather-hum-2" class="text-white">--%</span></div>
+                    <div>Vento: <span id="weather-wind-2" class="text-white">-- km/h</span></div>
+                    <div>Max/Min: <span id="weather-range-2" class="text-indigo-400">--° / --°</span></div>
+                </div>
+            </div>
+
+            <div class="space-y-0.5">
+                <p class="text-[9px] font-semibold text-white/50 uppercase tracking-wider mb-0.5">Previsione 5 Giorni</p>
+                <div id="weather-5day-2" class="space-y-0.5">
+                    <div class="text-center py-2 text-[10px] text-white/40">Seleziona o cerca una città...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST HINT -->
+    <div id="hint-toast" class="absolute bottom-8 left-1/2 -translate-x-1/2 z-35 glass-panel px-4 py-2 rounded-full text-[11px] text-white/90 pointer-events-none transition-opacity duration-700 flex items-center space-x-2 shadow-xl">
+        <i data-lucide="radio" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span>Tocca per comandi • Dot Radio Live • Schede Meteo Trasparenti & PiP Movibili</span>
+    </div>
+
+    <!-- BARRA DI NAVIGAZIONE E CONTROLLI -->
+    <div id="controls-overlay" class="absolute inset-x-0 bottom-0 z-50 p-4 md:p-6 transition-all duration-300 transform translate-y-full opacity-0 pointer-events-none flex flex-col items-center space-y-3">
+        
+        <!-- WIDGET PLAYER MUSICALE / WEB RADIO RAPIDO -->
+        <div id="music-quick-bar" class="glass-panel pointer-events-auto rounded-2xl px-4 py-2.5 max-w-xl w-full flex items-center justify-between shadow-2xl border border-white/10 text-xs">
+            <div class="flex items-center space-x-3 overflow-hidden pr-2">
+                <!-- Visualizzatore Equalizzatore -->
+                <div id="eq-indicator" class="flex items-end space-x-0.5 h-4 px-1 eq-paused">
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                </div>
+                <div class="truncate">
+                    <p id="music-title-display" class="font-semibold text-emerald-400 truncate">📻 Dot Radio (Diretta Live)</p>
+                    <p id="music-status-display" class="text-[10px] text-white/60 truncate">Stream Radio Live Online</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button id="btn-music-prev" class="p-1.5 rounded-xl hover:bg-white/10 text-white/80 active:scale-95 transition">
+                    <i data-lucide="skip-back" class="w-4 h-4"></i>
+                </button>
+                <button id="btn-music-play" class="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95 transition shadow-md shadow-emerald-500/20">
+                    <i id="icon-music-play" data-lucide="play" class="w-4 h-4 fill-current"></i>
+                </button>
+                <button id="btn-music-next" class="p-1.5 rounded-xl hover:bg-white/10 text-white/80 active:scale-95 transition">
+                    <i data-lucide="skip-forward" class="w-4 h-4"></i>
+                </button>
+                <div class="h-4 w-px bg-white/20 mx-1"></div>
+                <button id="btn-music-mute" class="p-1.5 rounded-xl hover:bg-white/10 text-white/80 transition">
+                    <i id="icon-music-volume" data-lucide="volume-2" class="w-4 h-4"></i>
+                </button>
+                <input type="range" id="music-volume" min="0" max="100" value="70" class="w-16 accent-emerald-400 bg-white/10 rounded-lg cursor-pointer h-1.5">
+            </div>
+        </div>
+
+        <!-- BARRA CONTROLLO SLIDESHOW PRINCIPALE -->
+        <div class="glass-panel pointer-events-auto rounded-3xl p-3 md:p-4 max-w-2xl w-full flex items-center justify-between shadow-2xl space-x-2 border border-white/10">
+            <div class="flex items-center space-x-1 md:space-x-2">
+                <button id="btn-prev" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-white/90">
+                    <i data-lucide="skip-back" class="w-5 h-5"></i>
+                </button>
+                <button id="btn-play-pause" class="p-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95 transition shadow-lg shadow-emerald-500/20">
+                    <i id="icon-play-pause" data-lucide="pause" class="w-5 h-5 fill-current"></i>
+                </button>
+                <button id="btn-next" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-white/90">
+                    <i data-lucide="skip-forward" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-1 md:space-x-2">
+                <label for="file-upload" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-white/90 cursor-pointer flex items-center space-x-2">
+                    <i data-lucide="image" class="w-5 h-5 text-emerald-400"></i>
+                    <span class="text-xs font-semibold hidden sm:inline">Foto</span>
+                </label>
+                <input type="file" id="file-upload" accept="image/*" multiple class="hidden" />
+
+                <!-- CARICAMENTO INTERA CARTELLA FOTO -->
+                <label for="folder-upload" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-white/90 cursor-pointer flex items-center space-x-2" title="Carica un'intera cartella di immagini">
+                    <i data-lucide="folder-plus" class="w-5 h-5 text-teal-300"></i>
+                    <span class="text-xs font-semibold hidden sm:inline">Cartella</span>
+                </label>
+                <input type="file" id="folder-upload" webkitdirectory directory multiple class="hidden" />
+
+                <label for="audio-upload" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-white/90 cursor-pointer flex items-center space-x-2">
+                    <i data-lucide="music-4" class="w-5 h-5 text-indigo-400"></i>
+                    <span class="text-xs font-semibold hidden sm:inline">Audio</span>
+                </label>
+                <input type="file" id="audio-upload" accept="audio/*" multiple class="hidden" />
+
+                <button id="btn-toggle-weather" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-amber-400" title="Mostra/Nascondi Schede Meteo">
+                    <i data-lucide="cloud-sun" class="w-5 h-5"></i>
+                </button>
+
+                <button id="btn-settings" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-white/90">
+                    <i data-lucide="sliders" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-1 md:space-x-2">
+                <button id="btn-fullscreen" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-white/90">
+                    <i id="icon-fullscreen" data-lucide="maximize" class="w-5 h-5"></i>
+                </button>
+                <button id="btn-close-controls" class="p-3 rounded-2xl hover:bg-white/10 active:scale-95 transition text-white/60 hover:text-white">
+                    <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE IMPOSTAZIONI AVANZATE -->
+    <div id="settings-modal" class="fixed inset-0 z-[1000000] bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-white/15 space-y-5 text-white max-h-[90vh] overflow-y-auto">
+            
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                <div class="flex items-center space-x-2.5">
+                    <i data-lucide="settings" class="w-5 h-5 text-emerald-400"></i>
+                    <h2 class="text-lg font-semibold">Impostazioni Cornice</h2>
+                </div>
+                <button id="btn-close-settings" class="p-1.5 rounded-full hover:bg-white/10 transition text-white/70">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-sm">
+
+                <!-- CONFIGURAZIONE WIDGET OROLOGIO & FONT -->
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="clock" class="w-4 h-4 text-emerald-400"></i>
+                        <span class="font-semibold">Orologio & Font Scritta</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-white/70 mb-1">Stile Orologio</label>
+                            <select id="setting-clock-style" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <option value="digital" selected class="bg-gray-900">Digitale HD</option>
+                                <option value="analog" class="bg-gray-900">Analogico</option>
+                                <option value="hidden" class="bg-gray-900">Nascosto</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-white/70 mb-1">Font Orario</label>
+                            <select id="setting-clock-font" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <option value="font-sans-modern" selected class="bg-gray-900">Modern Sans (Clean)</option>
+                                <option value="font-digital-led" class="bg-gray-900">Digital LED (Orbitron)</option>
+                                <option value="font-mono-tech" class="bg-gray-900">Monospace Tech</option>
+                                <option value="font-classic-serif" class="bg-gray-900">Classic Serif (Cinzel)</option>
+                                <option value="font-handwritten" class="bg-gray-900">Handwritten / Elegant</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-white/70 mb-1">Posizione Orologio</label>
+                        <select id="setting-clock-pos" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="top-left" selected class="bg-gray-900">In Alto a Sinistra</option>
+                            <option value="top-right" class="bg-gray-900">In Alto a Destra</option>
+                            <option value="bottom-left" class="bg-gray-900">In Basso a Sinistra</option>
+                            <option value="bottom-right" class="bg-gray-900">In Basso a Destra</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- SEZIONE SCHEDE METEO -->
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="cloud-sun" class="w-4 h-4 text-amber-400"></i>
+                            <span class="font-semibold">Gestione Schede Meteo</span>
+                        </div>
+                        <button id="btn-settings-add-weather" class="px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-medium transition border border-emerald-500/30 flex items-center space-x-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>Aggiungi 2ª Città</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <label class="block text-xs font-medium text-white/70 mb-1">Città 1</label>
+                            <input type="text" id="setting-city-1-input" value="Roma" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-white/70 mb-1">Città 2 (Opzionale)</label>
+                            <input type="text" id="setting-city-2-input" placeholder="Es. Milano..." class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEZIONE MUSICA & WEB RADIO -->
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="radio" class="w-4 h-4 text-indigo-400"></i>
+                            <span class="font-semibold">Web Radio & Audio</span>
+                        </div>
+                        <input type="checkbox" id="setting-music-enable" checked class="w-4 h-4 accent-emerald-400 rounded cursor-pointer">
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-medium text-white/70">Seleziona Stazione / Stream</label>
+                        <select id="setting-track-select" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <!-- Popolato Dinamicamente JS -->
+                        </select>
+                    </div>
+
+                    <!-- CAMPO URL PERSONALIZZATO RADIO -->
+                    <div id="custom-radio-container" class="space-y-1.5 hidden pt-1">
+                        <label class="block text-xs font-medium text-emerald-400">URL Web Radio Personalizzato</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="input-custom-radio-url" placeholder="https://stream.radio.it/live" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <button id="btn-apply-custom-radio" class="px-3 py-1.5 rounded-xl bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition">
+                                Applica
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <label class="block text-xs font-medium text-white/70 mb-1">Riproduzione</label>
+                            <select id="setting-music-mode" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <option value="loop" selected class="bg-gray-900">🔂 Ripeti / Streaming Continuo</option>
+                                <option value="sequence" class="bg-gray-900">➡️ In Sequenza</option>
+                                <option value="shuffle" class="bg-gray-900">🔀 Casuale</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-white/70 mb-1">Auto-Play all'avvio</label>
+                            <select id="setting-music-autoplay" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <option value="yes" selected class="bg-gray-900">Sì, Avvia Radio</option>
+                                <option value="no" class="bg-gray-900">No, Silenzioso</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONFIGURAZIONE LAYOUT & PIP MULTIPLI -->
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-3">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="layout" class="w-4 h-4 text-emerald-400"></i>
+                        <span class="font-semibold">Modalità Visualizzazione & PiP</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-white/70 mb-1">Layout Schermo</label>
+                        <select id="setting-layout" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="single" selected class="bg-gray-900">🖼️ Foto Singola (Schermo Intero)</option>
+                            <option value="pip" class="bg-gray-900">🖼️📱 Picture-in-Picture Sovrapposto</option>
+                            <option value="split" class="bg-gray-900">🌗 Dual Photo Split View (Due Foto)</option>
+                        </select>
+                    </div>
+
+                    <!-- OPZIONI SPECIFICHE MULTI-PIP -->
+                    <div id="pip-options" class="space-y-3 pt-2 hidden border-t border-white/10">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-white/70 mb-1">Numero Finestre PiP</label>
+                                <select id="setting-pip-count" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                    <option value="1" selected class="bg-gray-900">1 Finestra PiP</option>
+                                    <option value="2" class="bg-gray-900">2 Finestre PiP</option>
+                                    <option value="3" class="bg-gray-900">3 Finestre PiP</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-white/70 mb-1">Dimensione PiP Initial</label>
+                                <select id="setting-pip-size" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                    <option value="sm" class="bg-gray-900">Piccola</option>
+                                    <option value="md" selected class="bg-gray-900">Media</option>
+                                    <option value="lg" class="bg-gray-900">Grande</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-xs text-white/70">Posizionamento Trascinabile</span>
+                            <button id="btn-reset-pip-pos" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs text-emerald-400 font-medium transition flex items-center space-x-1">
+                                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                <span>Ripristina Posizioni Default</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- OPZIONE AGGIORNAMENTO DUAL PHOTO / MULTI PIP -->
+                    <div id="dual-change-options" class="pt-2 hidden border-t border-white/10">
+                        <label class="block text-xs font-medium text-white/70 mb-1">Sincronizzazione Cambio Foto</label>
+                        <select id="setting-dual-change" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="alternate" selected class="bg-gray-900">🔄 Alternato (Rotazione Sfalsata Continua)</option>
+                            <option value="together" class="bg-gray-900">⚡ Sincronizzato (Cambiano Tutte Insieme)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- CONFIGURAZIONE MOVIMENTO CINEMATICO (KEN BURNS) -->
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="camera" class="w-4 h-4 text-emerald-400"></i>
+                            <span class="font-semibold">Effetto Ken Burns (Pan & Zoom)</span>
+                        </div>
+                        <input type="checkbox" id="setting-motion-enable" checked class="w-4 h-4 accent-emerald-400 rounded cursor-pointer">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <label class="block text-xs font-medium text-white/70 mb-1">Tipo Movimento</label>
+                            <select id="setting-motion-pattern" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <option value="random" selected class="bg-gray-900">🔀 Casuale</option>
+                                <option value="zoom-in" class="bg-gray-900">🔍 Solo Zoom In</option>
+                                <option value="zoom-out" class="bg-gray-900">🔎 Solo Zoom Out</option>
+                                <option value="pan-lr" class="bg-gray-900">↔️ Pan Orizzontale</option>
+                                <option value="pan-up-down" class="bg-gray-900">↕️ Pan Verticale</option>
+                                <option value="pan-diag" class="bg-gray-900">↗️ Pan Diagonale</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-white/70 mb-1">Velocità Movimento</label>
+                            <select id="setting-motion-speed" class="w-full bg-white/10 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                                <option value="18s" class="bg-gray-900">Lenta (18s)</option>
+                                <option value="12s" selected class="bg-gray-900">Media (12s)</option>
+                                <option value="7s" class="bg-gray-900">Veloce (7s)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transizione Cambio Foto -->
+                <div>
+                    <label class="block font-medium mb-1">Transizione Cambio Foto</label>
+                    <select id="setting-effect" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <option value="random" selected class="bg-gray-900">🔀 Casuale (Tutte)</option>
+                        <option value="effect-fade" class="bg-gray-900">✨ Dissolvenza (Crossfade)</option>
+                        <option value="effect-slide-left" class="bg-gray-900">⬅️ Slide a Sinistra</option>
+                        <option value="effect-slide-right" class="bg-gray-900">➡️ Slide a Destra</option>
+                        <option value="effect-zoom-in" class="bg-gray-900">🔍 Zoom In Entrada</option>
+                        <option value="effect-flip-h" class="bg-gray-900">🔄 Flip 3D Orizzontale</option>
+                        <option value="effect-blur" class="bg-gray-900">💧 Sfocatura (Blur Fade)</option>
+                        <option value="effect-wipe" class="bg-gray-900">📐 Wipe / Tendina</option>
+                    </select>
+                </div>
+
+                <!-- Intervalli e Adattamento -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-xs mb-1">Intervallo Slide</label>
+                        <select id="setting-interval" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="4000" class="bg-gray-900">4 Secondi</option>
+                            <option value="7000" selected class="bg-gray-900">7 Secondi</option>
+                            <option value="12000" class="bg-gray-900">12 Secondi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-xs mb-1">Formato Foto</label>
+                        <select id="setting-fit" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                            <option value="contain" selected class="bg-gray-900">Fit (Foto Intera)</option>
+                            <option value="cover" class="bg-gray-900">Fill (Riempi)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Night Mode Slider -->
+                <div class="space-y-1 pt-2 border-t border-white/10">
+                    <div class="flex justify-between items-center">
+                        <p class="font-medium flex items-center space-x-1.5">
+                            <i data-lucide="moon" class="w-4 h-4 text-indigo-400"></i>
+                            <span>Modalità Notte (Dimmer)</span>
+                        </p>
+                        <span id="dimmer-val" class="text-xs text-white/60">0%</span>
+                    </div>
+                    <input type="range" id="setting-dimmer" min="0" max="85" value="0" class="w-full accent-emerald-400 bg-white/10 rounded-lg cursor-pointer h-2">
+                </div>
+
+                <!-- Status WakeLock -->
+                <div class="flex items-center justify-between pt-2 border-t border-white/10">
+                    <div>
+                        <p class="font-medium flex items-center space-x-1.5">
+                            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+                            <span>Schermo Sempre Acceso</span>
+                        </p>
+                        <p id="wakelock-status" class="text-xs text-emerald-400">In attivazione...</p>
+                    </div>
+                </div>
+
+                <div class="pt-1 flex flex-col space-y-2">
+                    <label for="folder-upload-modal" class="w-full py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 text-xs font-semibold transition border border-teal-500/30 flex items-center justify-center space-x-2 cursor-pointer">
+                        <i data-lucide="folder-open" class="w-4 h-4"></i>
+                        <span>Carica Cartella Foto Locale</span>
+                    </label>
+                    <input type="file" id="folder-upload-modal" webkitdirectory directory multiple class="hidden" />
+
+                    <button id="btn-reset-photos" class="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold transition border border-red-500/30">
+                        Ripristina Foto Predefinite HD
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGICA JAVASCRIPT -->
+    <script>
+        const DEFAULT_PHOTOS = [
+            "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1511884642898-4c92249e20b6?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1920&q=80"
+        ];
+
+        // PRESET AUDIO & WEB RADIO (Includes Dot Radio as Default Stream)
+        const DEFAULT_AUDIO_TRACKS = [
+            {
+                id: 'dot-radio',
+                title: '📻 Dot Radio (Diretta Live)',
+                sub: 'Streaming Radiofonico Live • nr9.newradio.it',
+                type: 'url',
+                url: 'https://nr9.newradio.it/proxy/marcocco?mp=/stream'
+            },
+            {
+                id: 'custom-web-radio',
+                title: '🌐 Web Radio (URL Personalizzato)',
+                sub: 'Stream Radio Personalizzato',
+                type: 'custom-radio',
+                url: ''
+            },
+            {
+                id: 'synth-piano',
+                title: '🎹 Piano Ambient Chill (Offline Synth)',
+                sub: 'Generatore Sonoro Sintetico Integrato',
+                type: 'synth-piano'
+            },
+            {
+                id: 'synth-meditation',
+                title: '🌌 Suoni Spaziali Zen (Offline Synth)',
+                sub: 'Sintetizzatore Armonico Meditativo',
+                type: 'synth-meditation'
+            },
+            {
+                id: 'remote-relax',
+                title: '🌿 Soft Piano Ambient Stream',
+                sub: 'Stream MP3 Royalty Free',
+                type: 'url',
+                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+            }
+        ];
+
+        const ENTRANCE_EFFECTS = [
+            'effect-fade', 'effect-slide-left', 'effect-slide-right',
+            'effect-slide-up', 'effect-slide-down', 'effect-zoom-in', 'effect-zoom-out',
+            'effect-flip-h', 'effect-flip-v', 'effect-blur', 'effect-rotate-scale', 'effect-wipe'
+        ];
+
+        const MOTION_PATTERNS = [
+            'animate-motion-zoom-in', 'animate-motion-zoom-out',
+            'animate-motion-pan-lr', 'animate-motion-pan-rl',
+            'animate-motion-pan-up', 'animate-motion-pan-down',
+            'animate-motion-diag-tl-br', 'animate-motion-diag-bl-tr'
+        ];
+
+        // STATE
+        let playlist = [...DEFAULT_PHOTOS];
+        let audioPlaylist = [...DEFAULT_AUDIO_TRACKS];
+        let currentAudioIndex = 0;
+        let isMusicPlaying = false;
+        let isMuted = false;
+        let audioVolume = 0.7;
+
+        let cardIndices = [0, 1, 2, 3];
+        let activeCardTurn = 1;
+        let isPlaying = true;
+        let timer = null;
+        let wakeLock = null;
+        let topZIndex = 500;
+
+        let activeLayerMap = { 1: 1, 2: 1, 3: 1, 4: 1 };
+        let customPositions = {};
+        
+        let cityCard1 = "Roma";
+        let cityCard2 = "Milano";
+        let isWeather1Min = false;
+        let isWeather2Min = false;
+
+        // AUDIO ENGINE VARS
+        let htmlAudio = new Audio();
+        htmlAudio.crossOrigin = "anonymous";
+        let audioCtx = null;
+        let synthInterval = null;
+
+        let config = {
+            layout: 'single',
+            pipCount: 1,
+            pipSize: 'md',
+            dualChange: 'alternate',
+            interval: 7000,
+            duration: 1000,
+            fitMode: 'contain',
+            effect: 'random',
+            motionEnable: true,
+            motionPattern: 'random',
+            motionSpeed: '12s',
+            clockStyle: 'digital',
+            clockFont: 'font-sans-modern',
+            clockPos: 'top-left',
+            dimmerOpacity: 0,
+            musicEnable: true,
+            musicMode: 'loop'
+        };
+
+        // DOM ELEMENTS
+        const layoutGrid = document.getElementById('layout-grid');
+        const cards = {
+            1: document.getElementById('card-1'),
+            2: document.getElementById('card-2'),
+            3: document.getElementById('card-3'),
+            4: document.getElementById('card-4')
+        };
+
+        const weatherCard1 = document.getElementById('weather-card-1');
+        const weatherCard2 = document.getElementById('weather-card-2');
+        const btnToggleWeather = document.getElementById('btn-toggle-weather');
+        const weatherBoxToggle = document.getElementById('weather-box-toggle');
+
+        const pipOptions = document.getElementById('pip-options');
+        const dualChangeOptions = document.getElementById('dual-change-options');
+
+        const displayContainer = document.getElementById('display-container');
+        const controlsOverlay = document.getElementById('controls-overlay');
+        const settingsModal = document.getElementById('settings-modal');
+        const hintToast = document.getElementById('hint-toast');
+        const nightDimmer = document.getElementById('night-dimmer');
+        const widgetOverlay = document.getElementById('widget-overlay');
+
+        // Music & Web Radio UI
+        const btnMusicPlay = document.getElementById('btn-music-play');
+        const iconMusicPlay = document.getElementById('icon-music-play');
+        const btnMusicPrev = document.getElementById('btn-music-prev');
+        const btnMusicNext = document.getElementById('btn-music-next');
+        const btnMusicMute = document.getElementById('btn-music-mute');
+        const iconMusicVolume = document.getElementById('icon-music-volume');
+        const musicVolumeSlider = document.getElementById('music-volume');
+        const musicTitleDisplay = document.getElementById('music-title-display');
+        const musicStatusDisplay = document.getElementById('music-status-display');
+        const eqIndicator = document.getElementById('eq-indicator');
+        const audioUpload = document.getElementById('audio-upload');
+        const settingTrackSelect = document.getElementById('setting-track-select');
+        const settingMusicEnable = document.getElementById('setting-music-enable');
+        const settingMusicMode = document.getElementById('setting-music-mode');
+        const customRadioContainer = document.getElementById('custom-radio-container');
+        const inputCustomRadioUrl = document.getElementById('input-custom-radio-url');
+        const btnApplyCustomRadio = document.getElementById('btn-apply-custom-radio');
+
+        // Main Controls UI
+        const btnPlayPause = document.getElementById('btn-play-pause');
+        const iconPlayPause = document.getElementById('icon-play-pause');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        const iconFullscreen = document.getElementById('icon-fullscreen');
+        const btnSettings = document.getElementById('btn-settings');
+        const btnCloseSettings = document.getElementById('btn-close-settings');
+        const btnCloseControls = document.getElementById('btn-close-controls');
+        const fileUpload = document.getElementById('file-upload');
+        const btnResetPhotos = document.getElementById('btn-reset-photos');
+        const btnResetPipPos = document.getElementById('btn-reset-pip-pos');
+
+        // Settings Controls
+        const settingLayout = document.getElementById('setting-layout');
+        const settingPipCount = document.getElementById('setting-pip-count');
+        const settingPipSize = document.getElementById('setting-pip-size');
+        const settingDualChange = document.getElementById('setting-dual-change');
+        const settingInterval = document.getElementById('setting-interval');
+        const settingFit = document.getElementById('setting-fit');
+        const settingEffect = document.getElementById('setting-effect');
+        const settingMotionEnable = document.getElementById('setting-motion-enable');
+        const settingMotionPattern = document.getElementById('setting-motion-pattern');
+        const settingMotionSpeed = document.getElementById('setting-motion-speed');
+        const settingClockStyle = document.getElementById('setting-clock-style');
+        const settingClockFont = document.getElementById('setting-clock-font');
+        const settingClockPos = document.getElementById('setting-clock-pos');
+        const settingCity1Input = document.getElementById('setting-city-1-input');
+        const settingCity2Input = document.getElementById('setting-city-2-input');
+        const btnSettingsAddWeather = document.getElementById('btn-settings-add-weather');
+        const settingDimmer = document.getElementById('setting-dimmer');
+        const dimmerVal = document.getElementById('dimmer-val');
+        const wakelockStatus = document.getElementById('wakelock-status');
+
+        // Clock Elements
+        const widgetDigital = document.getElementById('widget-digital');
+        const widgetAnalog = document.getElementById('widget-analog');
+        const clockTime = document.getElementById('clock-time');
+        const clockDate = document.getElementById('clock-date');
+        const clockDateAnalog = document.getElementById('clock-date-analog');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initClock();
+            initSingleWeatherData(cityCard1, 1);
+            requestWakeLock();
+            setupDraggablePipWindows();
+            setupDraggableWeatherWindow(weatherCard1);
+            setupDraggableWeatherWindow(weatherCard2);
+            initAudioPlayer();
+
+            assignUniqueInitialIndices();
+
+            updateLayoutDOM();
+            loadInitialImages();
+            startSlideshow();
+
+            setTimeout(() => {
+                hintToast.classList.add('opacity-0');
+            }, 5500);
+        });
+
+        // PREVENZIONE DUPLICATI CONTEMPORANEI
+        function assignUniqueInitialIndices() {
+            let used = new Set();
+            for (let c = 0; c < 4; c++) {
+                let found = false;
+                for (let i = 0; i < playlist.length; i++) {
+                    const idx = (c + i) % playlist.length;
+                    if (!used.has(idx)) {
+                        cardIndices[c] = idx;
+                        used.add(idx);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) cardIndices[c] = c % playlist.length;
+            }
+        }
+
+        function getNextUniqueImageIndex(cardId) {
+            const activeCards = getActiveCards();
+            const currentlyShownIndices = new Set(
+                activeCards
+                    .filter(id => id !== cardId)
+                    .map(id => cardIndices[id - 1])
+            );
+
+            let candidate = (cardIndices[cardId - 1] + 1) % playlist.length;
+            let attempts = 0;
+            while (currentlyShownIndices.has(candidate) && attempts < playlist.length) {
+                candidate = (candidate + 1) % playlist.length;
+                attempts++;
+            }
+            return candidate;
+        }
+
+        function loadInitialImages() {
+            for (let c = 1; c <= 4; c++) {
+                const img = document.getElementById(`photo-${c}-layer-1`);
+                const photoUrl = playlist[cardIndices[c - 1]];
+                img.src = photoUrl;
+                document.getElementById(`bg-blur-${c}`).style.backgroundImage = `url('${photoUrl}')`;
+                applyMotionEffect(img);
+            }
+        }
+
+        // --- SISTEMA METEO PER DUE SCHEDE TRASCINABILI & RIDIMENSIONABILI ---
+        const weatherCodeMap = {
+            0: { desc: "Sereno", icon: "☀️" },
+            1: { desc: "Preval. Sereno", icon: "🌤️" },
+            2: { desc: "Parzialm. Nuvoloso", icon: "⛅" },
+            3: { desc: "Coperto", icon: "☁️" },
+            45: { desc: "Nebbia", icon: "🌫️" },
+            48: { desc: "Nebbia Brinata", icon: "🌫️" },
+            51: { desc: "Pioviggine Leggera", icon: "🌦️" },
+            61: { desc: "Pioggia Modera", icon: "🌧️" },
+            63: { desc: "Pioggia Forte", icon: "🌧️" },
+            71: { desc: "Neve Leggera", icon: "🌨️" },
+            80: { desc: "Rovesci di Pioggia", icon: "🌦️" },
+            95: { desc: "Temporale", icon: "⛈️" }
+        };
+
+        async function initSingleWeatherData(cityName, cardNum) {
+            try {
+                const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=it`);
+                const geoData = await geoRes.json();
+                if (geoData.results && geoData.results.length > 0) {
+                    const place = geoData.results[0];
+                    await fetchWeatherDataForCard(place.latitude, place.longitude, place.name, cardNum);
+                } else {
+                    document.getElementById(`weather-status-sub-${cardNum}`).textContent = "Città non trovata";
+                }
+            } catch (err) {
+                console.warn(`Errore Meteo Card ${cardNum}:`, err);
+            }
+        }
+
+        async function fetchWeatherDataForCard(lat, lon, displayName, cardNum) {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min&relativehumidity_2m_max&windspeed_10m_max&timezone=auto`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data && data.current_weather && data.daily) {
+                document.getElementById(`weather-city-name-${cardNum}`).textContent = `Meteo ${displayName}`;
+                
+                const currCode = data.current_weather.weathercode;
+                const info = weatherCodeMap[currCode] || { desc: "Nuvoloso", icon: "☁️" };
+                const temp = Math.round(data.current_weather.temperature);
+                
+                document.getElementById(`weather-temp-${cardNum}`).textContent = `${temp}°C`;
+                document.getElementById(`weather-cond-${cardNum}`).textContent = info.desc;
+                document.getElementById(`weather-icon-${cardNum}`).textContent = info.icon;
+                
+                if (cardNum === 1) {
+                    document.getElementById('weather-temp-main').textContent = `${temp}°C`;
+                    document.getElementById('weather-desc-main').textContent = `• ${info.desc}`;
+                }
+
+                const todayMax = Math.round(data.daily.temperature_2m_max[0]);
+                const todayMin = Math.round(data.daily.temperature_2m_min[0]);
+                document.getElementById(`weather-range-${cardNum}`).textContent = `${todayMax}° / ${todayMin}°`;
+                
+                const wind = Math.round(data.current_weather.windspeed);
+                document.getElementById(`weather-wind-${cardNum}`).textContent = `${wind} km/h`;
+
+                // Render 5 Days
+                const dayContainer = document.getElementById(`weather-5day-${cardNum}`);
+                dayContainer.innerHTML = '';
+
+                for (let i = 1; i <= 5; i++) {
+                    const dateObj = new Date(data.daily.time[i]);
+                    const dayName = dateObj.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric' });
+                    const code = data.daily.weathercode[i];
+                    const dayInfo = weatherCodeMap[code] || { desc: "Sereno", icon: "☀️" };
+                    const maxT = Math.round(data.daily.temperature_2m_max[i]);
+                    const minT = Math.round(data.daily.temperature_2m_min[i]);
+
+                    const row = document.createElement('div');
+                    row.className = "flex items-center justify-between text-[10px] py-0.5 px-1.5 rounded-md bg-black/30 border border-white/5 hover:bg-black/50 transition";
+                    row.innerHTML = `
+                        <span class="w-14 font-medium capitalize text-white/90 truncate">${dayName}</span>
+                        <span class="text-xs px-0.5">${dayInfo.icon}</span>
+                        <span class="text-[9px] text-white/60 truncate flex-1 px-1 text-center">${dayInfo.desc}</span>
+                        <span class="font-mono text-[9px] font-semibold"><span class="text-emerald-400">${maxT}°</span>/<span class="text-white/50">${minT}°</span></span>
+                    `;
+                    dayContainer.appendChild(row);
+                }
+            }
+        }
+
+        // METEO 1 CONTROLS
+        document.getElementById('btn-weather-search-1').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('weather-search-bar-1').classList.toggle('hidden');
+        });
+
+        const performSearch1 = () => {
+            const val = document.getElementById('input-weather-city-1').value.trim();
+            if (val) {
+                cityCard1 = val;
+                settingCity1Input.value = val;
+                initSingleWeatherData(cityCard1, 1);
+                document.getElementById('weather-search-bar-1').classList.add('hidden');
+            }
+        };
+
+        document.getElementById('btn-weather-submit-1').addEventListener('click', (e) => { e.stopPropagation(); performSearch1(); });
+        document.getElementById('input-weather-city-1').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') performSearch1(); });
+
+        document.getElementById('btn-weather-min-1').addEventListener('click', (e) => {
+            e.stopPropagation();
+            isWeather1Min = !isWeather1Min;
+            document.getElementById('weather-body-1').classList.toggle('hidden', isWeather1Min);
+            document.getElementById('weather-search-bar-1').classList.add('hidden');
+            document.getElementById('icon-weather-min-1').setAttribute('data-lucide', isWeather1Min ? 'plus' : 'minus');
+            lucide.createIcons();
+        });
+
+        // METEO 2 CONTROLS
+        const openSecondWeatherCard = (city = "Milano") => {
+            cityCard2 = city;
+            settingCity2Input.value = city;
+            weatherCard2.classList.remove('hidden');
+            initSingleWeatherData(cityCard2, 2);
+        };
+
+        document.getElementById('btn-weather-add-2').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openSecondWeatherCard(cityCard2 || "Milano");
+        });
+
+        document.getElementById('btn-settings-add-weather').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openSecondWeatherCard(settingCity2Input.value.trim() || "Milano");
+        });
+
+        document.getElementById('btn-weather-close-2').addEventListener('click', (e) => {
+            e.stopPropagation();
+            weatherCard2.classList.add('hidden');
+        });
+
+        document.getElementById('btn-weather-search-2').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('weather-search-bar-2').classList.toggle('hidden');
+        });
+
+        const performSearch2 = () => {
+            const val = document.getElementById('input-weather-city-2').value.trim();
+            if (val) {
+                cityCard2 = val;
+                settingCity2Input.value = val;
+                initSingleWeatherData(cityCard2, 2);
+                document.getElementById('weather-search-bar-2').classList.add('hidden');
+            }
+        };
+
+        document.getElementById('btn-weather-submit-2').addEventListener('click', (e) => { e.stopPropagation(); performSearch2(); });
+        document.getElementById('input-weather-city-2').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') performSearch2(); });
+
+        document.getElementById('btn-weather-min-2').addEventListener('click', (e) => {
+            e.stopPropagation();
+            isWeather2Min = !isWeather2Min;
+            document.getElementById('weather-body-2').classList.toggle('hidden', isWeather2Min);
+            document.getElementById('weather-search-bar-2').classList.add('hidden');
+            document.getElementById('icon-weather-min-2').setAttribute('data-lucide', isWeather2Min ? 'plus' : 'minus');
+            lucide.createIcons();
+        });
+
+        settingCity1Input.addEventListener('change', (e) => {
+            cityCard1 = e.target.value.trim();
+            if (cityCard1) initSingleWeatherData(cityCard1, 1);
+        });
+
+        settingCity2Input.addEventListener('change', (e) => {
+            cityCard2 = e.target.value.trim();
+            if (cityCard2) openSecondWeatherCard(cityCard2);
+        });
+
+        btnToggleWeather.addEventListener('click', (e) => {
+            e.stopPropagation();
+            weatherCard1.classList.toggle('hidden');
+        });
+
+        weatherBoxToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            weatherCard1.classList.remove('hidden');
+        });
+
+        function setupDraggableWeatherWindow(el) {
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            function onDragStart(clientX, clientY) {
+                isDragging = true;
+                el.classList.add('is-dragging');
+                topZIndex++;
+                el.style.zIndex = topZIndex;
+
+                const rect = el.getBoundingClientRect();
+                startX = clientX;
+                startY = clientY;
+                initialLeft = rect.left;
+                initialTop = rect.top;
+            }
+
+            function onDragMove(clientX, clientY) {
+                if (!isDragging) return;
+
+                const deltaX = clientX - startX;
+                const deltaY = clientY - startY;
+
+                let newLeft = initialLeft + deltaX;
+                let newTop = initialTop + deltaY;
+
+                const maxLeft = window.innerWidth - el.offsetWidth - 10;
+                const maxTop = window.innerHeight - el.offsetHeight - 10;
+
+                newLeft = Math.max(10, Math.min(newLeft, maxLeft));
+                newTop = Math.max(10, Math.min(newTop, maxTop));
+
+                el.style.left = `${newLeft}px`;
+                el.style.top = `${newTop}px`;
+                el.style.right = 'auto';
+                el.style.bottom = 'auto';
+            }
+
+            function onDragEnd() {
+                if (isDragging) {
+                    isDragging = false;
+                    el.classList.remove('is-dragging');
+                }
+            }
+
+            el.addEventListener('mousedown', (e) => {
+                if (e.target.closest('button') || e.target.closest('input')) return;
+                e.stopPropagation();
+                onDragStart(e.clientX, e.clientY);
+
+                const moveHandler = (ev) => onDragMove(ev.clientX, ev.clientY);
+                const upHandler = () => {
+                    onDragEnd();
+                    window.removeEventListener('mousemove', moveHandler);
+                    window.removeEventListener('mouseup', upHandler);
+                };
+                window.addEventListener('mousemove', moveHandler);
+                window.addEventListener('mouseup', upHandler);
+            });
+
+            el.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button') || e.target.closest('input')) return;
+                e.stopPropagation();
+                const touch = e.touches[0];
+                onDragStart(touch.clientX, touch.clientY);
+
+                const touchMoveHandler = (ev) => {
+                    const t = ev.touches[0];
+                    onDragMove(t.clientX, t.clientY);
+                };
+
+                const touchEndHandler = () => {
+                    onDragEnd();
+                    window.removeEventListener('touchmove', touchMoveHandler);
+                    window.removeEventListener('touchend', touchEndHandler);
+                };
+
+                window.addEventListener('touchmove', touchMoveHandler, { passive: true });
+                window.addEventListener('touchend', touchEndHandler);
+            }, { passive: true });
+        }
+
+        // --- AUDIO & WEB RADIO ENGINE IMPLEMENTATION ---
+        function initAudioPlayer() {
+            renderAudioTrackOptions();
+
+            htmlAudio.addEventListener('ended', () => {
+                handleTrackEnded();
+            });
+
+            htmlAudio.addEventListener('error', () => {
+                console.warn('Audio stream error, falling back to Web Audio Synth...');
+                musicStatusDisplay.textContent = 'Errore Connessione - Passaggio a Synth Offline';
+                playSynthTrack('synth-piano');
+            });
+        }
+
+        function renderAudioTrackOptions() {
+            settingTrackSelect.innerHTML = '';
+            audioPlaylist.forEach((tr, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.className = 'bg-gray-900';
+                opt.textContent = `${tr.title}`;
+                if (idx === currentAudioIndex) opt.selected = true;
+                settingTrackSelect.appendChild(opt);
+            });
+            checkCustomRadioVisibility();
+        }
+
+        function checkCustomRadioVisibility() {
+            const currentTrack = audioPlaylist[currentAudioIndex];
+            if (currentTrack && currentTrack.type === 'custom-radio') {
+                customRadioContainer.classList.remove('hidden');
+            } else {
+                customRadioContainer.classList.add('hidden');
+            }
+        }
+
+        function updateMusicUI() {
+            const track = audioPlaylist[currentAudioIndex];
+            musicTitleDisplay.textContent = track.title;
+            musicStatusDisplay.textContent = track.sub || 'Riproduzione In Corso';
+
+            if (isMusicPlaying) {
+                iconMusicPlay.setAttribute('data-lucide', 'pause');
+                eqIndicator.classList.remove('eq-paused');
+            } else {
+                iconMusicPlay.setAttribute('data-lucide', 'play');
+                eqIndicator.classList.add('eq-paused');
+            }
+
+            if (isMuted) {
+                iconMusicVolume.setAttribute('data-lucide', 'volume-x');
+            } else if (audioVolume < 0.3) {
+                iconMusicVolume.setAttribute('data-lucide', 'volume-1');
+            } else {
+                iconMusicVolume.setAttribute('data-lucide', 'volume-2');
+            }
+            lucide.createIcons();
+        }
+
+        function playCurrentAudio() {
+            if (!config.musicEnable) return;
+
+            stopAudioEngine();
+            const track = audioPlaylist[currentAudioIndex];
+
+            if (track.type === 'synth-piano' || track.type === 'synth-meditation') {
+                playSynthTrack(track.type);
+            } else if (track.type === 'url' || track.type === 'local' || track.type === 'custom-radio') {
+                if (!track.url) {
+                    musicStatusDisplay.textContent = 'Nessun URL fornito per la Radio';
+                    return;
+                }
+                htmlAudio.src = track.url;
+                htmlAudio.volume = isMuted ? 0 : audioVolume;
+                htmlAudio.play().then(() => {
+                    isMusicPlaying = true;
+                    updateMusicUI();
+                }).catch(err => {
+                    console.log('Autoplay blocked or stream error');
+                    musicStatusDisplay.textContent = 'Premi Play per avviare lo streaming';
+                });
+            }
+            isMusicPlaying = true;
+            updateMusicUI();
+        }
+
+        function stopAudioEngine() {
+            htmlAudio.pause();
+            if (synthInterval) {
+                clearInterval(synthInterval);
+                synthInterval = null;
+            }
+            isMusicPlaying = false;
+            updateMusicUI();
+        }
+
+        function toggleMusicPlay() {
+            if (isMusicPlaying) {
+                stopAudioEngine();
+            } else {
+                playCurrentAudio();
+            }
+        }
+
+        function nextAudioTrack() {
+            if (config.musicMode === 'shuffle') {
+                currentAudioIndex = Math.floor(Math.random() * audioPlaylist.length);
+            } else {
+                currentAudioIndex = (currentAudioIndex + 1) % audioPlaylist.length;
+            }
+            renderAudioTrackOptions();
+            playCurrentAudio();
+        }
+
+        function prevAudioTrack() {
+            currentAudioIndex = (currentAudioIndex - 1 + audioPlaylist.length) % audioPlaylist.length;
+            renderAudioTrackOptions();
+            playCurrentAudio();
+        }
+
+        function handleTrackEnded() {
+            if (config.musicMode === 'loop') {
+                playCurrentAudio();
+            } else {
+                nextAudioTrack();
+            }
+        }
+
+        // --- WEB AUDIO API OFFLINE AMBIENT SYNTHESIZER ---
+        function playSynthTrack(type) {
+            if (!audioCtx) {
+                const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtxClass) audioCtx = new AudioCtxClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            stopAudioEngine();
+            isMusicPlaying = true;
+            updateMusicUI();
+
+            const scale = type === 'synth-piano' 
+                ? [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33]
+                : [130.81, 146.83, 164.81, 196.00, 220.00, 261.63];
+
+            synthInterval = setInterval(() => {
+                if (!isMusicPlaying || isMuted || !audioCtx) return;
+
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+
+                    const freq = scale[Math.floor(Math.random() * scale.length)];
+                    osc.type = type === 'synth-piano' ? 'sine' : 'triangle';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                    const targetVol = audioVolume * 0.15;
+                    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(targetVol, audioCtx.currentTime + 0.4);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 3.2);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 3.3);
+                } catch(e){}
+            }, type === 'synth-piano' ? 1800 : 2600);
+        }
+
+        // CARICAMENTO FILE AUDIO LOCALI
+        audioUpload.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            const newTracks = files.map((file, i) => ({
+                id: `local-${Date.now()}-${i}`,
+                title: file.name.replace(/\.[^/.]+$/, ""),
+                sub: 'File Audio Locale User',
+                type: 'local',
+                url: URL.createObjectURL(file)
+            }));
+
+            audioPlaylist = [...newTracks, ...DEFAULT_AUDIO_TRACKS];
+            currentAudioIndex = 0;
+            renderAudioTrackOptions();
+            playCurrentAudio();
+            hideControls();
+        });
+
+        // CUSTOM RADIO URL HANDLER
+        btnApplyCustomRadio.addEventListener('click', () => {
+            const url = inputCustomRadioUrl.value.trim();
+            if (url) {
+                audioPlaylist[1].url = url;
+                audioPlaylist[1].sub = `Stream Custom: ${url}`;
+                currentAudioIndex = 1;
+                renderAudioTrackOptions();
+                playCurrentAudio();
+            }
+        });
+
+        // MUSICA EVENT LISTENERS
+        btnMusicPlay.addEventListener('click', (e) => { e.stopPropagation(); toggleMusicPlay(); resetControlsTimeout(); });
+        btnMusicPrev.addEventListener('click', (e) => { e.stopPropagation(); prevAudioTrack(); resetControlsTimeout(); });
+        btnMusicNext.addEventListener('click', (e) => { e.stopPropagation(); nextAudioTrack(); resetControlsTimeout(); });
+
+        btnMusicMute.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isMuted = !isMuted;
+            htmlAudio.muted = isMuted;
+            updateMusicUI();
+            resetControlsTimeout();
+        });
+
+        musicVolumeSlider.addEventListener('input', (e) => {
+            e.stopPropagation();
+            audioVolume = parseFloat(e.target.value) / 100;
+            htmlAudio.volume = audioVolume;
+            if (audioVolume === 0) isMuted = true;
+            else isMuted = false;
+            updateMusicUI();
+        });
+
+        settingTrackSelect.addEventListener('change', (e) => {
+            currentAudioIndex = parseInt(e.target.value, 10);
+            checkCustomRadioVisibility();
+            playCurrentAudio();
+        });
+
+        settingMusicEnable.addEventListener('change', (e) => {
+            config.musicEnable = e.target.checked;
+            if (!config.musicEnable) stopAudioEngine();
+            else playCurrentAudio();
+        });
+
+        settingMusicMode.addEventListener('change', (e) => {
+            config.musicMode = e.target.value;
+        });
+
+        // --- DRAG & DROP PIP MECHANICS ---
+        function setupDraggablePipWindows() {
+            [2, 3, 4].forEach(cardId => {
+                const cardEl = cards[cardId];
+                let isDragging = false;
+                let startX, startY, initialLeft, initialTop;
+
+                function onDragStart(clientX, clientY) {
+                    isDragging = true;
+                    cardEl.classList.add('is-dragging');
+                    topZIndex++;
+                    cardEl.style.zIndex = topZIndex;
+
+                    const rect = cardEl.getBoundingClientRect();
+                    startX = clientX;
+                    startY = clientY;
+                    initialLeft = rect.left;
+                    initialTop = rect.top;
+                }
+
+                function onDragMove(clientX, clientY) {
+                    if (!isDragging) return;
+
+                    const deltaX = clientX - startX;
+                    const deltaY = clientY - startY;
+
+                    let newLeft = initialLeft + deltaX;
+                    let newTop = initialTop + deltaY;
+
+                    const maxLeft = window.innerWidth - cardEl.offsetWidth - 10;
+                    const maxTop = window.innerHeight - cardEl.offsetHeight - 10;
+
+                    newLeft = Math.max(10, Math.min(newLeft, maxLeft));
+                    newTop = Math.max(10, Math.min(newTop, maxTop));
+
+                    cardEl.style.left = `${newLeft}px`;
+                    cardEl.style.top = `${newTop}px`;
+                    cardEl.style.right = 'auto';
+                    cardEl.style.bottom = 'auto';
+
+                    customPositions[cardId] = { left: `${newLeft}px`, top: `${newTop}px` };
+                }
+
+                function onDragEnd() {
+                    if (isDragging) {
+                        isDragging = false;
+                        cardEl.classList.remove('is-dragging');
+                    }
+                }
+
+                cardEl.addEventListener('mousedown', (e) => {
+                    const rect = cardEl.getBoundingClientRect();
+                    if (e.clientX > rect.right - 20 && e.clientY > rect.bottom - 20) return;
+                    e.stopPropagation();
+                    onDragStart(e.clientX, e.clientY);
+
+                    const moveHandler = (ev) => onDragMove(ev.clientX, ev.clientY);
+                    const upHandler = () => {
+                        onDragEnd();
+                        window.removeEventListener('mousemove', moveHandler);
+                        window.removeEventListener('mouseup', upHandler);
+                    };
+                    window.addEventListener('mousemove', moveHandler);
+                    window.addEventListener('mouseup', upHandler);
+                });
+
+                cardEl.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    const rect = cardEl.getBoundingClientRect();
+                    if (touch.clientX > rect.right - 25 && touch.clientY > rect.bottom - 25) return;
+                    e.stopPropagation();
+                    onDragStart(touch.clientX, touch.clientY);
+
+                    const touchMoveHandler = (ev) => {
+                        const t = ev.touches[0];
+                        onDragMove(t.clientX, t.clientY);
+                    };
+
+                    const touchEndHandler = () => {
+                        onDragEnd();
+                        window.removeEventListener('touchmove', touchMoveHandler);
+                        window.removeEventListener('touchend', touchEndHandler);
+                        window.removeEventListener('touchcancel', touchEndHandler);
+                    };
+
+                    window.addEventListener('touchmove', touchMoveHandler, { passive: true });
+                    window.addEventListener('touchend', touchEndHandler);
+                    window.addEventListener('touchcancel', touchEndHandler);
+                }, { passive: true });
+            });
+        }
+
+        function resetPipPositions() {
+            customPositions = {};
+            updateLayoutDOM();
+        }
+
+        // --- LAYOUT CONTROLLER ---
+        function updateLayoutDOM() {
+            [2, 3, 4].forEach(id => {
+                const c = cards[id];
+                c.className = "photo-card relative hidden";
+                c.style.left = '';
+                c.style.top = '';
+                c.style.right = '';
+                c.style.bottom = '';
+                c.style.zIndex = '';
+            });
+
+            cards[1].className = "photo-card relative w-full h-full";
+            layoutGrid.className = "w-full h-full relative transition-all duration-500 overflow-hidden";
+
+            if (config.layout === 'single') {
+                pipOptions.classList.add('hidden');
+                dualChangeOptions.classList.add('hidden');
+            } else if (config.layout === 'split') {
+                cards[2].classList.remove('hidden');
+                layoutGrid.classList.add('grid', 'grid-cols-1', 'landscape:grid-cols-2', 'portrait:grid-rows-2', 'gap-1.5', 'p-1.5');
+                pipOptions.classList.add('hidden');
+                dualChangeOptions.classList.remove('hidden');
+            } else if (config.layout === 'pip') {
+                pipOptions.classList.remove('hidden');
+                dualChangeOptions.classList.remove('hidden');
+
+                const count = parseInt(config.pipCount, 10);
+                const defaultPipDefaults = [
+                    { id: 2, top: '2.5rem', right: '2.5rem', left: 'auto', bottom: 'auto' },
+                    { id: 3, top: 'auto', bottom: '3rem', left: '2.5rem', right: 'auto' },
+                    { id: 4, top: 'auto', bottom: '3rem', right: '2.5rem', left: 'auto' }
+                ];
+
+                for (let i = 0; i < count; i++) {
+                    const id = i + 2;
+                    const cardEl = cards[id];
+                    cardEl.classList.remove('hidden');
+                    cardEl.className = `photo-card pip-window pip-size-${config.pipSize}`;
+
+                    if (customPositions[id]) {
+                        cardEl.style.left = customPositions[id].left;
+                        cardEl.style.top = customPositions[id].top;
+                        cardEl.style.right = 'auto';
+                        cardEl.style.bottom = 'auto';
+                    } else {
+                        const def = defaultPipDefaults[i];
+                        cardEl.style.top = def.top;
+                        cardEl.style.bottom = def.bottom;
+                        cardEl.style.left = def.left;
+                        cardEl.style.right = def.right;
+                    }
+                    cardEl.style.zIndex = 200 + i;
+                }
+            }
+        }
+
+        // --- ROTAZIONE SLIDESHOW FOTO ---
+        function startSlideshow() {
+            stopSlideshow();
+            isPlaying = true;
+            updatePlayPauseIcon();
+            timer = setInterval(rotatePhotos, config.interval);
+        }
+
+        function stopSlideshow() {
+            isPlaying = false;
+            updatePlayPauseIcon();
+            if (timer) clearInterval(timer);
+        }
+
+        function togglePlayPause() {
+            if (isPlaying) stopSlideshow();
+            else startSlideshow();
+        }
+
+        function updatePlayPauseIcon() {
+            iconPlayPause.setAttribute('data-lucide', isPlaying ? 'pause' : 'play');
+            lucide.createIcons();
+        }
+
+        function getActiveCards() {
+            if (config.layout === 'single') return [1];
+            if (config.layout === 'split') return [1, 2];
+            if (config.layout === 'pip') {
+                const count = parseInt(config.pipCount, 10);
+                const active = [1];
+                for (let i = 0; i < count; i++) active.push(i + 2);
+                return active;
+            }
+            return [1];
+        }
+
+        function rotatePhotos() {
+            const activeCards = getActiveCards();
+
+            if (config.dualChange === 'together' || activeCards.length === 1) {
+                activeCards.forEach(cardId => {
+                    const nextIdx = getNextUniqueImageIndex(cardId);
+                    cardIndices[cardId - 1] = nextIdx;
+                    changePhotoInCard(cardId, playlist[nextIdx]);
+                });
+            } else {
+                const targetCardId = activeCards[(activeCardTurn - 1) % activeCards.length];
+                const nextIdx = getNextUniqueImageIndex(targetCardId);
+                cardIndices[targetCardId - 1] = nextIdx;
+                changePhotoInCard(targetCardId, playlist[nextIdx]);
+                activeCardTurn = (activeCardTurn % activeCards.length) + 1;
+            }
+        }
+
+        function prevPhoto() {
+            const activeCards = getActiveCards();
+            activeCards.forEach(cardId => {
+                cardIndices[cardId - 1] = (cardIndices[cardId - 1] - 1 + playlist.length) % playlist.length;
+                changePhotoInCard(cardId, playlist[cardIndices[cardId - 1]]);
+            });
+        }
+
+        function nextPhoto() {
+            rotatePhotos();
+        }
+
+        function getActiveEntranceEffect() {
+            if (config.effect === 'random') {
+                const idx = Math.floor(Math.random() * ENTRANCE_EFFECTS.length);
+                return ENTRANCE_EFFECTS[idx];
+            }
+            return config.effect;
+        }
+
+        function changePhotoInCard(cardNumber, url) {
+            const activeLayerNum = activeLayerMap[cardNumber];
+            const nextLayerNum = activeLayerNum === 1 ? 2 : 1;
+
+            const wrapperCurrent = document.getElementById(`wrapper-${cardNumber}-layer-${activeLayerNum}`);
+            const wrapperNext = document.getElementById(`wrapper-${cardNumber}-layer-${nextLayerNum}`);
+            const imgNext = document.getElementById(`photo-${cardNumber}-layer-${nextLayerNum}`);
+            const bgBlur = document.getElementById(`bg-blur-${cardNumber}`);
+
+            const selectedEntrance = getActiveEntranceEffect();
+
+            wrapperNext.style.transitionDuration = `${config.duration}ms`;
+            wrapperCurrent.style.transitionDuration = `${config.duration}ms`;
+
+            wrapperNext.className = `photo-wrapper ${selectedEntrance} z-10`;
+            wrapperCurrent.className = `photo-wrapper ${selectedEntrance} active z-10`;
+
+            imgNext.className = `photo-img object-${config.fitMode}`;
+            imgNext.src = url;
+
+            imgNext.onload = () => {
+                applyMotionEffect(imgNext);
+
+                requestAnimationFrame(() => {
+                    wrapperNext.classList.add('active');
+                    wrapperCurrent.classList.remove('active');
+                });
+
+                activeLayerMap[cardNumber] = nextLayerNum;
+                bgBlur.style.backgroundImage = `url('${url}')`;
+            };
+        }
+
+        // --- KEN BURNS MOTIONS ---
+        function applyMotionEffect(imgElement) {
+            MOTION_PATTERNS.forEach(cls => imgElement.classList.remove(cls));
+            imgElement.style.removeProperty('--motion-duration');
+
+            if (!config.motionEnable) return;
+
+            let chosenMotion = '';
+            if (config.motionPattern === 'random') {
+                const idx = Math.floor(Math.random() * MOTION_PATTERNS.length);
+                chosenMotion = MOTION_PATTERNS[idx];
+            } else if (config.motionPattern === 'zoom-in') {
+                chosenMotion = 'animate-motion-zoom-in';
+            } else if (config.motionPattern === 'zoom-out') {
+                chosenMotion = 'animate-motion-zoom-out';
+            } else if (config.motionPattern === 'pan-lr') {
+                chosenMotion = 'animate-motion-pan-lr';
+            } else if (config.motionPattern === 'pan-up-down') {
+                chosenMotion = Math.random() > 0.5 ? 'animate-motion-pan-up' : 'animate-motion-pan-down';
+            } else if (config.motionPattern === 'pan-diag') {
+                chosenMotion = Math.random() > 0.5 ? 'animate-motion-diag-tl-br' : 'animate-motion-diag-bl-tr';
+            }
+
+            imgElement.style.setProperty('--motion-duration', config.motionSpeed);
+            imgElement.classList.add(chosenMotion);
+        }
+
+        // CARICAMENTO FOTO PERSONALI
+        fileUpload.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            playlist = files.map(file => URL.createObjectURL(file));
+            assignUniqueInitialIndices();
+            loadInitialImages();
+            startSlideshow();
+            hideControls();
+        });
+
+        // GESTIONE CARICAMENTO INTERA CARTELLA
+        function handleFolderUpload(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            // Filtra solo file di immagine validi
+            const imageFiles = files.filter(file => file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(file.name));
+
+            if (imageFiles.length === 0) {
+                alert('Nessuna immagine valida trovata nella cartella selezionata.');
+                return;
+            }
+
+            playlist = imageFiles.map(file => URL.createObjectURL(file));
+            assignUniqueInitialIndices();
+            loadInitialImages();
+            startSlideshow();
+            hideControls();
+            if (!settingsModal.classList.contains('hidden')) {
+                settingsModal.classList.add('hidden');
+            }
+        }
+
+        const folderUpload = document.getElementById('folder-upload');
+        const folderUploadModal = document.getElementById('folder-upload-modal');
+        if (folderUpload) folderUpload.addEventListener('change', handleFolderUpload);
+        if (folderUploadModal) folderUploadModal.addEventListener('change', handleFolderUpload);
+
+        btnResetPhotos.addEventListener('click', () => {
+            playlist = [...DEFAULT_PHOTOS];
+            assignUniqueInitialIndices();
+            loadInitialImages();
+            startSlideshow();
+            settingsModal.classList.add('hidden');
+        });
+
+        btnResetPipPos.addEventListener('click', resetPipPositions);
+
+        // --- OROLOGIO & FONT ---
+        function initClock() {
+            function update() {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = now.getSeconds();
+
+                clockTime.textContent = `${hours}:${minutes}`;
+                const options = { weekday: 'long', month: 'short', day: 'numeric' };
+                const dateStr = now.toLocaleDateString('it-IT', options);
+                clockDate.textContent = dateStr;
+                clockDateAnalog.textContent = dateStr;
+
+                const hDeg = (now.getHours() % 12) * 30 + (now.getMinutes() / 2);
+                const mDeg = now.getMinutes() * 6;
+                const sDeg = seconds * 6;
+
+                document.getElementById('analog-h').style.transform = `rotate(${hDeg}deg)`;
+                document.getElementById('analog-m').style.transform = `rotate(${mDeg}deg)`;
+                document.getElementById('analog-s').style.transform = `rotate(${sDeg}deg)`;
+            }
+            update();
+            setInterval(update, 1000);
+        }
+
+        function updateWidgetPosition() {
+            widgetOverlay.className = `absolute widget-pos-${config.clockPos} transition-all duration-500 pointer-events-none text-white select-none`;
+        }
+
+        function updateClockFont() {
+            clockTime.className = `text-4xl md:text-6xl font-bold tracking-tight widget-text-shadow ${config.clockFont}`;
+        }
+
+        // --- WAKE LOCK API ---
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakelockStatus.textContent = 'Attivo (Schermo sempre acceso)';
+                    wakelockStatus.className = 'text-xs text-emerald-400';
+                } else {
+                    wakelockStatus.textContent = 'Non supportato dal browser';
+                    wakelockStatus.className = 'text-xs text-amber-400';
+                }
+            } catch (err) {
+                wakelockStatus.textContent = 'Disabilitato / Non attivo';
+                wakelockStatus.className = 'text-xs text-red-400';
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        });
+
+        // --- CONTROLLI TOUCH & OVERLAY ---
+        let controlsTimeout = null;
+        let controlsVisible = false;
+
+        function showControls() {
+            controlsOverlay.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+            controlsVisible = true;
+            resetControlsTimeout();
+        }
+
+        function hideControls() {
+            controlsOverlay.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+            controlsVisible = false;
+            if (controlsTimeout) clearTimeout(controlsTimeout);
+        }
+
+        function toggleControls() {
+            if (controlsVisible) hideControls();
+            else showControls();
+        }
+
+        function resetControlsTimeout() {
+            if (controlsTimeout) clearTimeout(controlsTimeout);
+            controlsTimeout = setTimeout(() => {
+                if (settingsModal.classList.contains('hidden')) {
+                    hideControls();
+                }
+            }, 6000);
+        }
+
+        displayContainer.addEventListener('click', (e) => {
+            if (!e.target.closest('.pip-window') && !e.target.closest('.weather-window')) {
+                toggleControls();
+            }
+        });
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        displayContainer.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.pip-window') || e.target.closest('.weather-window')) return;
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        displayContainer.addEventListener('touchend', (e) => {
+            if (e.target.closest('.pip-window') || e.target.closest('.weather-window')) return;
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                if (diffX < 0) nextPhoto();
+                else prevPhoto();
+                if (isPlaying) startSlideshow();
+            }
+        }, { passive: true });
+
+        btnPlayPause.addEventListener('click', (e) => { e.stopPropagation(); togglePlayPause(); resetControlsTimeout(); });
+        btnPrev.addEventListener('click', (e) => { e.stopPropagation(); prevPhoto(); if (isPlaying) startSlideshow(); resetControlsTimeout(); });
+        btnNext.addEventListener('click', (e) => { e.stopPropagation(); nextPhoto(); if (isPlaying) startSlideshow(); resetControlsTimeout(); });
+        btnCloseControls.addEventListener('click', (e) => { e.stopPropagation(); hideControls(); });
+
+        btnFullscreen.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+                iconFullscreen.setAttribute('data-lucide', 'minimize');
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                iconFullscreen.setAttribute('data-lucide', 'maximize');
+            }
+            lucide.createIcons();
+            resetControlsTimeout();
+        });
+
+        btnSettings.addEventListener('click', (e) => { e.stopPropagation(); settingsModal.classList.remove('hidden'); });
+        btnCloseSettings.addEventListener('click', () => { settingsModal.classList.add('hidden'); resetControlsTimeout(); });
+
+        // Eventi Impostazioni
+        settingLayout.addEventListener('change', (e) => {
+            config.layout = e.target.value;
+            updateLayoutDOM();
+        });
+
+        settingPipCount.addEventListener('change', (e) => {
+            config.pipCount = e.target.value;
+            updateLayoutDOM();
+        });
+
+        settingPipSize.addEventListener('change', (e) => {
+            config.pipSize = e.target.value;
+            updateLayoutDOM();
+        });
+
+        settingDualChange.addEventListener('change', (e) => config.dualChange = e.target.value);
+        settingEffect.addEventListener('change', (e) => config.effect = e.target.value);
+        settingInterval.addEventListener('change', (e) => {
+            config.interval = parseInt(e.target.value, 10);
+            if (isPlaying) startSlideshow();
+        });
+
+        settingMotionEnable.addEventListener('change', (e) => {
+            config.motionEnable = e.target.checked;
+            [1, 2, 3, 4].forEach(c => {
+                applyMotionEffect(document.getElementById(`photo-${c}-layer-${activeLayerMap[c]}`));
+            });
+        });
+
+        settingMotionPattern.addEventListener('change', (e) => {
+            config.motionPattern = e.target.value;
+            [1, 2, 3, 4].forEach(c => {
+                applyMotionEffect(document.getElementById(`photo-${c}-layer-${activeLayerMap[c]}`));
+            });
+        });
+
+        settingMotionSpeed.addEventListener('change', (e) => {
+            config.motionSpeed = e.target.value;
+            [1, 2, 3, 4].forEach(c => {
+                applyMotionEffect(document.getElementById(`photo-${c}-layer-${activeLayerMap[c]}`));
+            });
+        });
+
+        settingFit.addEventListener('change', (e) => {
+            config.fitMode = e.target.value;
+            document.querySelectorAll('.photo-img').forEach(img => {
+                img.className = `photo-img object-${config.fitMode}`;
+            });
+        });
+
+        settingClockStyle.addEventListener('change', (e) => {
+            config.clockStyle = e.target.value;
+            if (config.clockStyle === 'digital') {
+                widgetOverlay.classList.remove('hidden');
+                widgetDigital.classList.remove('hidden');
+                widgetAnalog.classList.add('hidden');
+            } else if (config.clockStyle === 'analog') {
+                widgetOverlay.classList.remove('hidden');
+                widgetDigital.classList.add('hidden');
+                widgetAnalog.classList.remove('hidden');
+            } else {
+                widgetOverlay.classList.add('hidden');
+            }
+        });
+
+        settingClockFont.addEventListener('change', (e) => {
+            config.clockFont = e.target.value;
+            updateClockFont();
+        });
+
+        settingClockPos.addEventListener('change', (e) => {
+            config.clockPos = e.target.value;
+            updateWidgetPosition();
+        });
+
+        settingDimmer.addEventListener('input', (e) => {
+            const opacity = e.target.value / 100;
+            nightDimmer.style.opacity = opacity;
+            dimmerVal.textContent = `${e.target.value}%`;
+        });
+    </script>
+</body>
+</html>
